@@ -20,6 +20,8 @@ type User struct {
 	Role      string    `json:"role"`
 }
 
+var defaultSongQueue []string = []string{"Song 1 - Artist A", "Song 2 - Artist B"} // Placeholder data
+
 // Database interaction functions
 func initDatabase() *sql.DB {
 	connStr := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
@@ -143,6 +145,18 @@ func localLogoutHandler(c *gin.Context) {
 	fmt.Printf("User with token '%s' logged out\n", sessionToken)
 }
 
+// Function to get the current song queue
+func getFeedHandler(c *gin.Context, db *sql.DB) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Not authenticated"})
+		return
+	}
+
+	fmt.Printf("User ID %d is requesting the queue.\n", userID)
+	c.JSON(http.StatusOK, gin.H{"queue": defaultSongQueue})
+}
+
 // Middleware for session authentication
 func sessionAuthMiddleware(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -188,6 +202,10 @@ func main() {
 		localLoginHandler(c, db)
 	})
 	router.POST("/auth/local/logout", localLogoutHandler)
+
+	router.GET("/feed", sessionAuthMiddleware(db), func(c *gin.Context) {
+		getFeedHandler(c, db)
+	})
 
 	router.GET("/protected", sessionAuthMiddleware(db), func(c *gin.Context) {
 		userID := c.GetInt64("user_id")
